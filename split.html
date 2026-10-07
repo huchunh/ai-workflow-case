@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Who Does What</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: same spreadsheet notebook as the main page; a role key (Me / AI / Together) drives every chip, the 2×2 map and the step matrix */
+:root{
+  --bg:#f6f7f8; --paper:#ffffff; --fg:#1f2329; --muted:#5c6470; --line:#d6dbe1; --grid:#e7eaee;
+  --pink:#ef949f; --pink-soft:#fbe3e6; --yellow:#ffd966; --yellow-soft:#fff4cc;
+  --me:#3a5a8c; --me-soft:#e3eaf5; --ai:#8a6a00; --ai-soft:#fff4cc; --both:#a83a4a; --both-soft:#fbe3e6;
+  --ink-on-accent:#1f2329;
+  --display:"Bricolage Grotesque",system-ui,sans-serif;
+  --body:"Public Sans",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#15181c; --paper:#1d2126; --fg:#e8ebef; --muted:#9aa3ae; --line:#353b43; --grid:#262b31;
+  --pink:#e8838f; --pink-soft:#3a2328; --yellow:#f2cc55; --yellow-soft:#3a3320;
+  --me:#9db9e6; --me-soft:#22304a; --ai:#f2cc55; --ai-soft:#3a3320; --both:#f0a0ab; --both-soft:#3a2328;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#15181c; --paper:#1d2126; --fg:#e8ebef; --muted:#9aa3ae; --line:#353b43; --grid:#262b31;
+  --pink:#e8838f; --pink-soft:#3a2328; --yellow:#f2cc55; --yellow-soft:#3a3320;
+  --me:#9db9e6; --me-soft:#22304a; --ai:#f2cc55; --ai-soft:#3a3320; --both:#f0a0ab; --both-soft:#3a2328;
+  color-scheme:dark}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 var(--body);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:100% 28px,120px 100%;}
+[hidden]{display:none!important}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:20px;padding-block:24px 80px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:clamp(2.1rem,5.6vw,3.6rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:clamp(1.45rem,3.2vw,2.1rem);font-weight:700}
+h3{font-size:1.08rem;font-weight:700}
+p{margin:0;max-width:65ch}
+ul{margin:0;padding-left:1.1em;display:grid;gap:4px}
+.lead{font-size:1.12rem;color:var(--muted)}
+.label{font:600 .72rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.note{font-size:.86rem;color:var(--muted)}
+code{font-family:var(--mono);font-size:.88em;background:var(--grid);padding:.1em .35em;border-radius:3px}
+a{color:inherit}
+a:focus-visible,button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+
+nav.tabs{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);width:max-content;max-width:100%;margin-bottom:28px;background:var(--paper)}
+nav.tabs a{font:600 .8rem var(--mono);padding:8px 14px;text-decoration:none;border-right:1px solid var(--line);color:var(--muted)}
+nav.tabs a:last-child{border-right:0}
+nav.tabs a[aria-current="page"]{background:var(--yellow);color:var(--ink-on-accent)}
+
+.hero{display:grid;gap:18px;padding-bottom:40px}
+section{display:grid;grid-template-columns:72px 1fr;gap:24px;padding-block:44px;border-top:1px solid var(--line)}
+section > .col{font:700 2.4rem/1 var(--display);color:var(--muted);opacity:.5}
+section > .body{display:grid;gap:18px;min-width:0}
+@media (max-width:640px){section{grid-template-columns:1fr;gap:8px}section > .col{font-size:1.4rem}}
+
+.chip{display:inline-flex;align-items:center;gap:6px;font:600 .74rem var(--mono);padding:3px 8px;border-radius:2px;white-space:nowrap;border:1px solid transparent}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.chip.me{background:var(--me-soft);color:var(--me)}
+.chip.ai{background:var(--ai-soft);color:var(--ai)}
+.chip.both{background:var(--both-soft);color:var(--both)}
+.key{display:flex;flex-wrap:wrap;gap:10px}
+
+/* workflow test */
+.test{display:grid;gap:0;border:1px solid var(--line);background:var(--paper)}
+.test .row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.4fr) auto;gap:16px;padding:14px 16px;border-top:1px solid var(--line);align-items:start}
+.test .row:first-child{border-top:0}
+.test .q{font-weight:600}
+.test .a{color:var(--muted);font-size:.95rem}
+.yes{font:700 .75rem var(--mono);color:var(--ink-on-accent);background:var(--yellow);padding:3px 8px}
+.part{font:700 .75rem var(--mono);color:var(--fg);background:var(--grid);padding:3px 8px}
+@media (max-width:640px){.test .row{grid-template-columns:1fr;gap:4px}}
+
+.contrast{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.contrast > div{background:var(--paper);border:1px solid var(--line);padding:16px;display:grid;gap:8px;align-content:start}
+
+/* 2x2 map */
+.map{display:grid;grid-template-columns:28px 1fr 1fr;grid-template-rows:1fr 1fr 28px;gap:8px}
+.map .q{background:var(--paper);border:1px solid var(--line);padding:14px;display:grid;gap:8px;align-content:start;min-width:0}
+.map .q h3{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.map .q p{font-size:.92rem;color:var(--muted)}
+.map .q.me{border-top:3px solid var(--me)}
+.map .q.ai{border-top:3px solid var(--ai)}
+.map .q.both{border-top:3px solid var(--both)}
+.map .chips{display:flex;flex-wrap:wrap;gap:6px}
+.map .chips span{font:.76rem var(--mono);background:var(--grid);padding:2px 6px}
+.axis-y{grid-row:1/3;writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;font:600 .72rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.axis-x{grid-column:2/4;text-align:center;font:600 .72rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+@media (max-width:640px){.map{grid-template-columns:1fr;grid-template-rows:none}.axis-y,.axis-x{display:none}}
+
+/* matrix */
+.filter{display:flex;flex-wrap:wrap;gap:6px}
+.filter button{font:600 .8rem var(--mono);padding:6px 10px;border:1px solid var(--line);background:var(--paper);color:var(--fg);cursor:pointer}
+.filter button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.scroll{overflow-x:auto;border:1px solid var(--line);background:var(--paper)}
+table{border-collapse:collapse;width:100%;font-size:.92rem;min-width:720px}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+th{font:600 .72rem var(--mono);text-transform:uppercase;letter-spacing:.06em;background:var(--grid)}
+td.stage{font:600 .76rem var(--mono);color:var(--muted);white-space:nowrap}
+td.why{color:var(--muted)}
+
+.cols3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.cols3 > div{background:var(--paper);border:1px solid var(--line);padding:16px;display:grid;gap:10px;align-content:start}
+.cols3 > div.me{border-top:3px solid var(--me)}
+.cols3 > div.ai{border-top:3px solid var(--ai)}
+.cols3 > div.both{border-top:3px solid var(--both)}
+
+.shift{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;border:1px solid var(--line);background:var(--paper)}
+.shift > div{padding:16px;display:grid;gap:8px;border-right:1px solid var(--line);align-content:start}
+.shift > div:last-child{border-right:0}
+.bar{display:flex;height:12px;border:1px solid var(--line)}
+.bar span{display:block;height:100%}
+.bar .m{background:var(--me)}.bar .b{background:var(--both)}.bar .a{background:var(--ai)}
+
+.principles{display:grid;gap:0;border-left:2px solid var(--line);margin-left:6px;padding:0}
+.principles li{list-style:none;padding:0 0 18px 22px;display:grid;gap:4px;position:relative}
+.principles li::before{content:"";position:absolute;left:-7px;top:6px;width:12px;height:12px;background:var(--yellow);border-radius:50%}
+.principles p{color:var(--muted)}
+footer{padding-top:32px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="tabs" aria-label="Pages">
+    <a href="index.html">1 · How I built the skill</a>
+    <a href="split.html" aria-current="page">2 · Who does what</a>
+  </nav>
+
+  <header class="hero">
+    <span class="label">Daily complaint-ratio report · by Hu</span>
+    <h1>Before automating anything, I decided who does what</h1>
+    <p class="lead">The skill works because I split the job before automating it. This page shows the order I thought in: first whether the task could become a workflow at all, then which steps I keep, which AI runs alone, and which we share. Each assignment comes with the reason it is the right call.</p>
+    <div class="key"><span class="chip me">Me alone</span><span class="chip ai">AI alone</span><span class="chip both">Together</span></div>
+  </header>
+
+  <section>
+    <div class="col" aria-hidden="true">1</div>
+    <div class="body">
+      <span class="label">What I thought about first</span>
+      <h2>Is this a workflow at all?</h2>
+      <p>Not every task should become a skill. Before I asked AI to automate anything, I checked the daily report against five questions. If most answers are yes, the task is a workflow: it can be written down once and run every day.</p>
+      <div class="test">
+        <div class="row"><div class="q">Does it repeat?</div><div class="a">Every working day, same file, same steps.</div><span class="yes">YES</span></div>
+        <div class="row"><div class="q">Is the input shape stable?</div><div class="a">Same sheet layout daily: Port block A–H, City block I–O, ratios in percent format.</div><span class="yes">YES</span></div>
+        <div class="row"><div class="q">Can the rules be written down?</div><div class="a">Mostly. Delete, clear, flag, merge are rules. A few edge cases (rounding, exactly 0.15%) needed work to put into words.</div><span class="part">AFTER WORK</span></div>
+        <div class="row"><div class="q">Is the output fixed?</div><div class="a">One cleaned xlsx and two images per port, same style, same folder naming.</div><span class="yes">YES</span></div>
+        <div class="row"><div class="q">Can a result be checked quickly?</div><div class="a">Yes, with counts of deleted and flagged cells, plus one look at an image.</div><span class="yes">YES</span></div>
+      </div>
+      <div class="contrast">
+        <div><span class="label">Becomes a workflow</span><h3>Producing the daily report</h3><p class="note">Same input, same rules, same output. Every run should look identical to yesterday's except for the numbers.</p></div>
+        <div><span class="label">Does not</span><h3>Explaining why a port spiked</h3><p class="note">Different every time. Needs context about the port, the week, and the people involved. AI can help me think, but there is no fixed recipe to save.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="col" aria-hidden="true">2</div>
+    <div class="body">
+      <span class="label">Then: how to split it</span>
+      <h2>How I sorted each step</h2>
+      <p>For every step I asked two things. Can the rule be written exactly, or does it need judgment? And once it is built, can a new mistake still appear on a normal day? Those two answers place each step in one of three zones.</p>
+      <div class="map">
+        <div class="axis-y">Clear rule ↑ · Judgment ↓</div>
+        <div class="q ai">
+          <h3><span class="chip ai">AI alone</span></h3>
+          <p>The rule is exact and was proven on real data while building, so it gives the same result every day. AI is faster and never skips a row.</p>
+          <div class="chips"><span>Delete Total and empty rows</span><span>Delete all-zero cities</span><span>Flag ratios at 0.15%</span><span>Clear formatting</span><span>Merge ports</span><span>Render images</span><span>Save to folder</span><span>Back up the skill</span></div>
+        </div>
+        <div class="q both">
+          <h3><span class="chip both">Together</span></h3>
+          <p>The output leaves my hands here, so a mistake would reach the daily report. AI checks first, then I check once.</p>
+          <div class="chips"><span>Check one image before sending</span></div>
+        </div>
+        <div class="q both">
+          <h3><span class="chip both">Together</span></h3>
+          <p>The rule is not clear yet. AI shows me results on real data; I turn "this looks wrong" into an exact rule.</p>
+          <div class="chips"><span>Find edge cases</span><span>Write the rules</span><span>Update the skill</span></div>
+        </div>
+        <div class="q me">
+          <h3><span class="chip me">Me alone</span></h3>
+          <p>Judgment or accountability. These depend on knowing the business and the team, and I answer for them.</p>
+          <div class="chips"><span>Decide what to automate</span><span>Describe the process</span><span>Set what the report must show</span><span>Complete and send the daily report</span></div>
+        </div>
+        <div></div>
+        <div class="axis-x">Chance of a new mistake at run time: low → high</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="col" aria-hidden="true">3</div>
+    <div class="body">
+      <span class="label">Step three</span>
+      <h2>Every step of the report, assigned</h2>
+      <div class="filter" role="group" aria-label="Filter by role">
+        <button type="button" data-f="all" aria-pressed="true">All</button>
+        <button type="button" data-f="me" aria-pressed="false">Me alone</button>
+        <button type="button" data-f="ai" aria-pressed="false">AI alone</button>
+        <button type="button" data-f="both" aria-pressed="false">Together</button>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Stage</th><th>Step</th><th>Who</th><th>Why</th></tr></thead>
+          <tbody id="matrix">
+            <tr data-r="me"><td class="stage">Design</td><td>Decide this report is worth automating</td><td><span class="chip me">Me</span></td><td class="why">Only I know how often I do it and what else that time could go to.</td></tr>
+            <tr data-r="me"><td class="stage">Design</td><td>Describe the manual steps in order</td><td><span class="chip me">Me</span></td><td class="why">The process lived in my head. AI cannot guess it from the file.</td></tr>
+            <tr data-r="me"><td class="stage">Design</td><td>Set what the team needs to see (0.15% threshold, two images per port)</td><td><span class="chip me">Me</span></td><td class="why">Business rules and reader needs come from the team, not the data.</td></tr>
+            <tr data-r="both"><td class="stage">Design</td><td>Turn rough rules into exact ones</td><td><span class="chip both">Together</span></td><td class="why">AI ran the rules on real data and showed results; I spotted what was off, like 0.1493% showing as 0.15% but not flagged.</td></tr>
+            <tr data-r="ai"><td class="stage">Run</td><td>Copy the file and keep the original untouched</td><td><span class="chip ai">AI</span></td><td class="why">Safety rule with no judgment involved.</td></tr>
+            <tr data-r="ai"><td class="stage">Run</td><td>Delete header, Total and empty rows; clear old formatting</td><td><span class="chip ai">AI</span></td><td class="why">Pure rules, and the report lists the counts so I can see them.</td></tr>
+            <tr data-r="ai"><td class="stage">Run</td><td>Delete all-zero cities</td><td><span class="chip ai">AI</span></td><td class="why">"All six ratios are 0" has no judgment in it. It was checked on real files while building, so I don't re-check it daily.</td></tr>
+            <tr data-r="ai"><td class="stage">Run</td><td>Flag ratios against 0.15%</td><td><span class="chip ai">AI</span></td><td class="why">This is where AI beats me: it checks every cell the same way. The hard part, the exact rounding rule, was settled together during design, not at run time.</td></tr>
+            <tr data-r="ai"><td class="stage">Run</td><td>Merge port cells, freeze panes</td><td><span class="chip ai">AI</span></td><td class="why">Formatting only; a mistake is visible right away.</td></tr>
+            <tr data-r="ai"><td class="stage">Output</td><td>Render 12 Excel-style images</td><td><span class="chip ai">AI</span></td><td class="why">Repetitive and exact. HTML tables screenshotted at 2× look the same every day.</td></tr>
+            <tr data-r="both"><td class="stage">Output</td><td>Check one image before sending</td><td><span class="chip both">Together</span></td><td class="why">AI looks at one image before delivering. I check one image before sending. That one look catches the failures most likely to slip through: layout, fonts, red flags missing.</td></tr>
+            <tr data-r="ai"><td class="stage">Output</td><td>Save to the dated folder</td><td><span class="chip ai">AI</span></td><td class="why">Fixed naming convention.</td></tr>
+            <tr data-r="me"><td class="stage">Output</td><td>Put the images into the daily report and send it</td><td><span class="chip me">Me</span></td><td class="why">The report goes out under my name. Sending is the point where I take responsibility, so it stays with me.</td></tr>
+            <tr data-r="both"><td class="stage">Maintain</td><td>Change the skill when the report changes</td><td><span class="chip both">Together</span></td><td class="why">I collect the changes and decide; AI rewrites the skill.</td></tr>
+            <tr data-r="ai"><td class="stage">Maintain</td><td>Back up the old skill before every update</td><td><span class="chip ai">AI</span></td><td class="why">A fixed habit that makes any change reversible.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" id="count"></p>
+    </div>
+  </section>
+
+  <section>
+    <div class="col" aria-hidden="true">4</div>
+    <div class="body">
+      <span class="label">The reasoning</span>
+      <h2>What each side brings</h2>
+      <div class="cols3">
+        <div class="me"><span class="chip me">Me</span><h3>Context and accountability</h3>
+          <ul><li>Knowing why the report exists and who reads it</li><li>Knowing that people read the displayed 0.15%, not the stored 0.1493%</li><li>Deciding the process is ready to trust</li><li>Owning the daily report that gets sent</li></ul></div>
+        <div class="ai"><span class="chip ai">AI</span><h3>Speed and consistency</h3>
+          <ul><li>Applies the same rule to every cell, every day</li><li>Never gets tired on row 200</li><li>Produces 12 images in one pass</li><li>Writes the process down as a reusable skill</li></ul></div>
+        <div class="both"><span class="chip both">Together</span><h3>A tight feedback loop</h3>
+          <ul><li>AI shows results on real data; I react</li><li>During design, AI ran every rule on real files so I could judge it</li><li>My corrections become exact rules in the skill</li><li>At run time, one shared check before anything leaves</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="col" aria-hidden="true">5</div>
+    <div class="body">
+      <span class="label">Over time</span>
+      <h2>The split moves as trust grows</h2>
+      <p>The zones are not fixed. As rules become exact and the reports prove reliable, work moves from "together" toward "AI alone", and my role shifts from doing to checking.</p>
+      <div class="shift">
+        <div><span class="label">Before</span><h3>All by hand</h3><div class="bar" role="img" aria-label="All steps done by me"><span class="m" style="width:100%"></span></div><p class="note">I did every step myself in Excel, then screenshotted each port.</p></div>
+        <div><span class="label">While building</span><h3>Mostly together</h3><div class="bar" role="img" aria-label="Mostly shared work"><span class="m" style="width:25%"></span><span class="b" style="width:50%"></span><span class="a" style="width:25%"></span></div><p class="note">AI ran each step; I compared results with what I would have done and corrected the rules.</p></div>
+        <div><span class="label">Now</span><h3>AI runs, I review</h3><div class="bar" role="img" aria-label="Mostly AI with my review"><span class="m" style="width:25%"></span><span class="b" style="width:7%"></span><span class="a" style="width:68%"></span></div><p class="note">One request runs the skill. I check one image, add the images to the daily report, and send it.</p></div>
+      </div>
+      <p class="note">Bars show the share of steps each role owns at that stage, roughly.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="col" aria-hidden="true">6</div>
+    <div class="body">
+      <span class="label">Why this split is correct</span>
+      <h2>Why one image check is enough</h2>
+      <p>An interviewer could fairly ask: if the flags matter so much, why not check them every day? Because the risk was handled at the right stage.</p>
+      <div class="cols3">
+        <div class="both"><h3>The rules were proven once</h3><p class="note">During design, the AI ran every rule on real files and I compared the result with what I would have done by hand, until they matched. Edge cases like 0.1493% and exactly 0.15% were found and written as exact rules then.</p></div>
+        <div class="ai"><h3>Code doesn't drift</h3><p class="note">The skill runs the same code on the same file layout every day. A rule that was right yesterday is right today. Re-checking every cell would repeat work the design phase already did.</p></div>
+        <div class="me"><h3>The check sits where risk is highest</h3><p class="note">What can still go wrong day to day is the output: an image that renders badly or loses its red flags. One image check, right before sending, covers that. Sending stays with me, so nothing reaches the report without my look.</p></div>
+      </div>
+      <div class="contrast">
+        <div><span class="label">When I would change the split</span><h3>The input changes</h3><p class="note">If the source file's layout, columns or threshold changes, the proven rules no longer apply. Then the affected steps move back to "together" until I've verified them on a real file again, and the skill is updated with a backup first.</p></div>
+        <div><span class="label">What I deliberately don't do</span><h3>Re-check every cell</h3><p class="note">That would make the automation pointless and add little safety, because a person scanning hundreds of cells is less reliable than the code that already checks them all.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="col" aria-hidden="true">Σ</div>
+    <div class="body">
+      <span class="label">What I take to the next workflow</span>
+      <h2>Principles I now use</h2>
+      <ul class="principles">
+        <li><h3>Ask "is it a workflow?" before "can AI do it?"</h3><p>If the input, rules and output are not stable, a saved skill will break. Keep it as a conversation instead.</p></li>
+        <li><h3>Split by rule clarity and cost of a silent error</h3><p>Clear and cheap goes to AI. Clear but costly is shared, with a check built in. Judgment stays with me.</p></li>
+        <li><h3>Check heavily while building, lightly while running</h3><p>Rules are verified on real data once. After that, one targeted check at the exit is enough.</p></li>
+        <li><h3>My job in the shared zone is to name what's wrong exactly</h3><p>"Looks off" can't be automated. "Round half-up to two decimals, then compare with 0.15" can.</p></li>
+        <li><h3>Keep anything sent to people with a person</h3><p>AI prepares the images; I complete the daily report and send it.</p></li>
+        <li><h3>Make every change reversible</h3><p>Back up before updating the skill, so trying an improvement is never risky.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>Built by Hu with Claude · <a href="index.html">Back to how I built the skill</a></footer>
+</div>
+<script>
+(function(){
+  var btns=document.querySelectorAll('.filter button'), rows=document.querySelectorAll('#matrix tr'), count=document.getElementById('count');
+  var names={all:'steps',me:'steps I do alone',ai:'steps AI does alone',both:'steps we do together'};
+  function apply(f){
+    var n=0;
+    rows.forEach(function(r){var show=f==='all'||r.dataset.r===f;r.hidden=!show;if(show)n++;});
+    btns.forEach(function(b){b.setAttribute('aria-pressed',b.dataset.f===f);});
+    count.textContent=n+' '+names[f]+' out of '+rows.length+'.';
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){apply(b.dataset.f);});});
+  apply('all');
+})();
+</script>
+</body>
+</html>

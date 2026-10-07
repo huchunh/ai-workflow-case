@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Building the Complaint Ratio Skill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@500;700&display=swap">
+<style>
+/* Layout: a spreadsheet notebook — column letters as gutters, pink Port and yellow City headers as the only accents, one interactive rounding demo */
+:root{
+  --bg:#f6f7f8; --paper:#ffffff; --fg:#1f2329; --muted:#5c6470; --line:#d6dbe1; --grid:#e7eaee;
+  --pink:#ef949f; --pink-soft:#fbe3e6; --yellow:#ffd966; --yellow-soft:#fff4cc;
+  --flag:#e00000; --ok:#1e7f4f; --ink-on-accent:#1f2329;
+  --display:"Bricolage Grotesque","Noto Sans SC",system-ui,sans-serif;
+  --body:"Public Sans","Noto Sans SC",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#15181c; --paper:#1d2126; --fg:#e8ebef; --muted:#9aa3ae; --line:#353b43; --grid:#262b31;
+  --pink:#e8838f; --pink-soft:#3a2328; --yellow:#f2cc55; --yellow-soft:#3a3320;
+  --flag:#ff5a5a; --ok:#4cc38a; --ink-on-accent:#1f2329; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#15181c; --paper:#1d2126; --fg:#e8ebef; --muted:#9aa3ae; --line:#353b43; --grid:#262b31;
+  --pink:#e8838f; --pink-soft:#3a2328; --yellow:#f2cc55; --yellow-soft:#3a3320;
+  --flag:#ff5a5a; --ok:#4cc38a; --ink-on-accent:#1f2329; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.6 var(--body);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:100% 28px,120px 100%;}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:20px;padding-block:40px 80px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:clamp(2.2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:clamp(1.5rem,3.4vw,2.2rem);font-weight:700}
+h3{font-size:1.15rem;font-weight:700}
+p{margin:0;max-width:65ch}
+.lead{font-size:1.15rem;color:var(--muted)}
+.mono{font-family:var(--mono)}
+.label{font:600 .72rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+code{font-family:var(--mono);font-size:.88em;background:var(--grid);padding:.1em .35em;border-radius:3px}
+
+/* hero */
+.hero{display:grid;gap:24px;padding-block:24px 48px}
+.hero .cells{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);width:max-content;max-width:100%;font:600 .8rem var(--mono)}
+.hero .cells span{padding:6px 12px;border-right:1px solid var(--line);background:var(--paper)}
+.hero .cells span:last-child{border-right:0}
+.hero .cells .p{background:var(--pink);color:var(--ink-on-accent)}
+.hero .cells .y{background:var(--yellow);color:var(--ink-on-accent)}
+.flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:12px;align-items:stretch;margin-top:8px}
+.flow .box{background:var(--paper);border:1px solid var(--line);padding:16px;min-width:0}
+.flow .box b{display:block;font-family:var(--display);font-size:1.6rem;line-height:1.1}
+.flow .arrow{align-self:center;font:600 1.2rem var(--mono);color:var(--muted)}
+@media (max-width:720px){.flow{grid-template-columns:1fr}.flow .arrow{transform:rotate(90deg);justify-self:center}}
+
+section{display:grid;grid-template-columns:72px 1fr;gap:24px;padding-block:44px;border-top:1px solid var(--line)}
+section > .col{font:700 2.4rem/1 var(--display);color:var(--muted);opacity:.5}
+section > .body{display:grid;gap:18px;min-width:0}
+@media (max-width:640px){section{grid-template-columns:1fr;gap:8px}section > .col{font-size:1.4rem}}
+
+/* journey */
+.journey{display:grid;gap:0;counter-reset:j;border-left:2px solid var(--line);margin-left:6px}
+.journey li{list-style:none;position:relative;padding:0 0 22px 26px;display:grid;gap:6px}
+.journey li::before{counter-increment:j;content:counter(j);position:absolute;left:-14px;top:0;width:26px;height:26px;border-radius:50%;
+  background:var(--paper);border:2px solid var(--line);font:600 .78rem/22px var(--mono);text-align:center}
+.journey li.key::before{background:var(--yellow);border-color:var(--yellow);color:var(--ink-on-accent)}
+.journey p{color:var(--muted)}
+.quote{font-family:var(--mono);font-size:.88rem;background:var(--paper);border:1px solid var(--line);padding:10px 12px;color:var(--fg)}
+.quote::before{content:"Hu › ";color:var(--muted)}
+
+/* steps table */
+.scroll{overflow-x:auto;border:1px solid var(--line);background:var(--paper)}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{font:600 .75rem var(--mono);text-transform:uppercase;letter-spacing:.06em;background:var(--grid)}
+td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted)}
+.tag{display:inline-block;font:600 .7rem var(--mono);padding:2px 6px;border-radius:2px;white-space:nowrap}
+.tag.p{background:var(--pink);color:var(--ink-on-accent)}
+.tag.y{background:var(--yellow);color:var(--ink-on-accent)}
+.tag.g{background:var(--grid);color:var(--fg)}
+
+/* demo */
+.demo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;background:var(--paper);border:1px solid var(--line);padding:20px}
+@media (max-width:720px){.demo{grid-template-columns:1fr}}
+.demo label{display:grid;gap:6px;font-weight:600}
+.demo input[type=text]{font:600 1.4rem var(--mono);padding:8px 10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);width:100%}
+.demo input:focus-visible,.demo button:focus-visible,.seg button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font:600 .82rem var(--mono);padding:6px 10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--yellow);border-color:var(--yellow);color:var(--ink-on-accent)}
+.out{display:grid;gap:10px;align-content:start}
+.cell{font:600 2rem var(--mono);border:1px solid var(--line);padding:10px 14px;background:var(--bg);font-variant-numeric:tabular-nums}
+.cell.flag{color:var(--flag);font-weight:800}
+.verdict{font-weight:600}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.presets button{font:.78rem var(--mono);padding:4px 8px;border:1px dashed var(--line);background:transparent;color:var(--muted);cursor:pointer}
+
+/* sample image */
+.sample{display:grid;gap:10px}
+.xl{border-collapse:collapse;font:13px Arial,"Noto Sans SC",sans-serif;color:#1f2329;background:#fff;width:auto}
+.xl th,.xl td{border:1px solid #333;text-align:center;vertical-align:middle;padding:4px 10px;height:28px}
+.xl th{height:60px;font:700 12px Arial,"Noto Sans SC",sans-serif;text-transform:none;letter-spacing:0}
+.xl th.p{background:#EF949F}.xl th.y{background:#FFD966}
+.xl td.f{color:#ff0000;font-weight:700}
+.note{font-size:.85rem;color:var(--muted)}
+
+.lessons{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.lessons div{background:var(--paper);border:1px solid var(--line);padding:16px;display:grid;gap:6px;align-content:start}
+.lessons p{color:var(--muted);font-size:.95rem}
+nav.tabs{display:flex;flex-wrap:wrap;border:1px solid var(--line);width:max-content;max-width:100%;background:var(--paper)}
+nav.tabs a{font:600 .8rem var(--mono);padding:8px 14px;text-decoration:none;border-right:1px solid var(--line);color:var(--muted)}
+nav.tabs a:last-child{border-right:0}
+nav.tabs a[aria-current="page"]{background:var(--yellow);color:var(--ink-on-accent)}
+nav.tabs a:focus-visible,.next:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.next{display:grid;gap:6px;background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--yellow);padding:18px;text-decoration:none;color:var(--fg)}
+.next:hover{background:var(--yellow-soft)}
+footer{padding-top:32px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+@media (prefers-reduced-motion:no-preference){.cell{transition:color .15s}}
+</style>
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header class="hero">
+    <nav class="tabs" aria-label="Pages"><a href="index.html" aria-current="page">1 · How I built the skill</a><a href="split.html">2 · Who does what</a></nav>
+    <div class="cells" aria-hidden="true"><span>A</span><span class="p">Port</span><span>…</span><span class="y">City</span><span>J</span><span>K</span><span>L</span><span>M</span><span>N</span><span>O</span></div>
+    <span class="label">Daily complaint-ratio report · by Hu</span>
+    <h1>Building the complaint-ratio skill with AI</h1>
+    <p class="lead">Every day I clean the same complaint-ratio Excel, flag the risky ratios, and send one picture per port to the team. This page shows how I turned that routine into a reusable AI skill, one conversation and one correction at a time.</p>
+    <div class="flow">
+      <div class="box"><span class="label">In</span><b>1 Excel</b><p class="note">Sheet named by data date. Port block A–H, City block I–O.</p></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="box"><span class="label">Skill</span><b>9 rules</b><p class="note">Clean, flag at 0.15%, merge, freeze panes.</p></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="box"><span class="label">Out</span><b>12 images + 1 xlsx</b><p class="note">Two images per port, saved to a dated folder on my Desktop.</p></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="col" aria-hidden="true">A</div>
+    <div class="body">
+      <span class="label">The problem</span>
+      <h2>A ten-step chore that had to be perfect every morning</h2>
+      <p>The source file comes with group-header rows, "Total" rows, cities with nothing but zeros, and formatting left over from upstream. Before anyone can read it, I had to delete rows, clear red and bold, re-flag every ratio against the 0.15% threshold, merge the port cells, then screenshot each port twice. It was slow, and one missed cell meant a wrong alert to a port team.</p>
+      <p>The rules lived only in my head. The first job was getting them out.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="col" aria-hidden="true">B</div>
+    <div class="body">
+      <span class="label">How I built it with AI</span>
+      <h2>Describe, run, check, correct, save</h2>
+      <ol class="journey">
+        <li>
+          <h3>Explain the process in my own words</h3>
+          <p>I uploaded a real day's file and walked Claude through what I do by hand, in the order I do it. No code, just the steps a new teammate would need.</p>
+          <div class="quote">delete row 2, copy column A into B, remove red and bold in K–O, delete every "Total" row…</div>
+        </li>
+        <li>
+          <h3>Let it run on the real file</h3>
+          <p>Claude worked on a copy (never the original), used openpyxl so the Excel styles survived, and gave back a cleaned xlsx plus a count of what it deleted and flagged.</p>
+        </li>
+        <li class="key">
+          <h3>Check the output against what I would have done</h3>
+          <p>This is where the real rules came out. Reading the result, I found cases I had never put into words, like a value that shows as 0.15% in Excel but is really 0.1493%.</p>
+          <div class="quote">0.1493 shows 0.15, flag it. But in column O, only flag above 0.15%.</div>
+        </li>
+        <li>
+          <h3>Correct it, precisely</h3>
+          <p>Each correction became an exact rule: round half-up to two decimals for K–N, strict "greater than" for O, leave I and J exactly as the source formatted them, delete trailing rows that only hold a port name.</p>
+        </li>
+        <li>
+          <h3>Make the images look like Excel</h3>
+          <p>Instead of screenshotting Excel by hand, Claude renders each port as an HTML table (Arial and Noto Sans CJK, 1px borders, pink and yellow headers) and captures it with Playwright at 2× resolution, then looks at one image to verify before delivering.</p>
+        </li>
+        <li class="key">
+          <h3>Save it as a skill</h3>
+          <p>Once a run came out right, I asked Claude to remember the whole process. It became the <code>complaint-report</code> skill: now one request does the cleanup, all 12 images, and saves them to a dated folder on my Desktop (<code>report/YYYY.MM.DD</code>).</p>
+        </li>
+        <li>
+          <h3>Version it like code</h3>
+          <p>I collect changes and update the skill once, and every update first backs up the old SKILL.md to a <code>skill backups</code> folder, so I can always roll back.</p>
+        </li>
+        <li>
+          <h3>Reuse the pattern</h3>
+          <p>The same recipe now covers the Courier tab of the DSP customer-ratio file: one image per port with the "Delivered but Not received" NO / YES / Total sub-columns under a merged header.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="col" aria-hidden="true">C</div>
+    <div class="body">
+      <span class="label">The rules, made precise</span>
+      <h2>What the skill actually does, in order</h2>
+      <p>Order matters. All row deletions happen before merging, otherwise merged ranges break.</p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>#</th><th>Step</th><th>Columns</th></tr></thead>
+          <tbody>
+            <tr><td class="n">1</td><td>Delete the group-header row (e.g. "FLA"); copy column A, value and style, into B</td><td><span class="tag p">A–B</span></td></tr>
+            <tr><td class="n">2</td><td>Leave City and Total Ratio untouched, keeping the source's own red/bold</td><td><span class="tag y">I–J</span></td></tr>
+            <tr><td class="n">3</td><td>Clear red and bold from every ratio cell</td><td><span class="tag y">K–O</span></td></tr>
+            <tr><td class="n">4</td><td>Delete every row where City is "Total"</td><td><span class="tag y">I</span></td></tr>
+            <tr><td class="n">5</td><td>Delete cities where every ratio is 0 (blank counts as 0) and list them in the report</td><td><span class="tag y">J–O</span></td></tr>
+            <tr><td class="n">6</td><td>Flag red + bold: displayed value ≥ 0.15% in K–N; raw value &gt; 0.15% in O</td><td><span class="tag y">K–O</span></td></tr>
+            <tr><td class="n">7</td><td>Delete leftover rows with no data from column C onward</td><td><span class="tag g">C+</span></td></tr>
+            <tr><td class="n">8</td><td>Merge and center each run of the same port</td><td><span class="tag p">A</span></td></tr>
+            <tr><td class="n">9</td><td>Freeze panes at B2 and select B2</td><td><span class="tag g">B2</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="col" aria-hidden="true">K</div>
+    <div class="body">
+      <span class="label">The edge case that mattered</span>
+      <h2>Flag what people see, not what is stored</h2>
+      <p>The team reads the 0.00% format. If a cell shows 0.15% but is not red, it looks like a mistake. So for K–N the skill rounds the way Excel displays it before comparing. Column O is the exception and uses the raw value. Try it:</p>
+      <div class="demo">
+        <div style="display:grid;gap:14px">
+          <label for="val">Stored ratio, in percent
+            <input id="val" type="text" inputmode="decimal" value="0.1493" autocomplete="off">
+          </label>
+          <div style="display:grid;gap:6px">
+            <span style="font-weight:600">Column</span>
+            <div class="seg" role="group" aria-label="Column">
+              <button type="button" id="colKN" aria-pressed="true">K–N · DNR, Courier, Tracking, Damage</button>
+              <button type="button" id="colO" aria-pressed="false">O · except valid POD</button>
+            </div>
+          </div>
+          <div class="presets">
+            <span class="note">Try:</span>
+            <button type="button" data-v="0.1452">0.1452</button>
+            <button type="button" data-v="0.1449">0.1449</button>
+            <button type="button" data-v="0.15">0.15</button>
+            <button type="button" data-v="0.1501">0.1501</button>
+          </div>
+        </div>
+        <div class="out" aria-live="polite">
+          <span class="label">Cell as Excel shows it</span>
+          <div class="cell" id="cell">0.15%</div>
+          <div class="verdict" id="verdict"></div>
+          <p class="note" id="why"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="col" aria-hidden="true">O</div>
+    <div class="body">
+      <span class="label">The output</span>
+      <h2>Two images per port</h2>
+      <p><b>PORT.png</b> shows the header and the port's own row (columns B–H). <b>PORT_cities.png</b> shows the port on the left and every remaining city under the yellow headers. Red bold carries over from the cleaned file.</p>
+      <div class="sample">
+        <span class="label">Example layout · illustrative numbers, not real data</span>
+        <div class="scroll" style="background:#fff">
+          <table class="xl">
+            <thead><tr>
+              <th class="p">Port</th><th class="y">City</th><th class="y">Total Ratio</th><th class="y">DNR Ratio</th>
+              <th class="y">Complaint for Courier<br>Service Ratio</th><th class="y">No Tracking<br>Update Ratio</th>
+              <th class="y">Damage/Lost<br>Ratio</th><th class="y">Ratio (except<br>valid POD)</th>
+            </tr></thead>
+            <tbody>
+              <tr><td rowspan="4">TX</td><td>Houston</td><td>0.42%</td><td class="f">0.15%</td><td>0.06%</td><td>0.08%</td><td>0.03%</td><td class="f">0.18%</td></tr>
+              <tr><td>Dallas</td><td>0.31%</td><td>0.11%</td><td>0.04%</td><td>0.07%</td><td>0.02%</td><td>0.12%</td></tr>
+              <tr><td>Austin</td><td>0.27%</td><td>0.09%</td><td>0.05%</td><td class="f">0.16%</td><td>0.01%</td><td>0.15%</td></tr>
+              <tr><td>San Antonio</td><td>0.19%</td><td>0.07%</td><td>0.03%</td><td>0.04%</td><td>0.02%</td><td>0.09%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Note Austin's 0.15% in column O stays plain: exactly 0.15% is not above the threshold.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="col" aria-hidden="true">Σ</div>
+    <div class="body">
+      <span class="label">What I learned</span>
+      <h2>Working with AI on a real workflow</h2>
+      <div class="lessons">
+        <div><h3>Start with a real file</h3><p>Describing rules in the abstract missed things. Running on an actual day's data surfaced the edge cases fast.</p></div>
+        <div><h3>The checking is the work</h3><p>AI did the repetitive part. My value was knowing what "right" looks like and saying exactly why a result was wrong.</p></div>
+      </div>
+      <a class="next" href="split.html"><span class="label">Next page</span><h3>Who does what: how I decided what to automate</h3><p class="note">Whether a task is a workflow at all, and which steps belong to me, to AI, or to both of us.</p></a>
+    </div>
+  </section>
+
+  <footer>Built by Hu with Claude · Daily complaint-ratio report</footer>
+</div>
+
+<script>
+(function(){
+  var val=document.getElementById('val'), cell=document.getElementById('cell'),
+      verdict=document.getElementById('verdict'), why=document.getElementById('why'),
+      bKN=document.getElementById('colKN'), bO=document.getElementById('colO'), mode='KN';
+  function shown(v){ // round half-up to 2 decimals, avoiding float drift
+    var r=Math.round(parseFloat((v*100).toPrecision(12)))/100; return r;
+  }
+  function update(){
+    var v=parseFloat(val.value);
+    if(isNaN(v)){cell.textContent='—';cell.classList.remove('flag');verdict.textContent='Enter a number like 0.1493';why.textContent='';return;}
+    var d=shown(v), flag;
+    if(mode==='KN'){
+      flag=d>=0.15;
+      why.textContent='K–N rule: '+v+'% displays as '+d.toFixed(2)+'%, and the displayed value is compared with ≥ 0.15%.';
+    }else{
+      flag=v>0.15;
+      why.textContent='O rule: the raw value '+v+'% is compared with > 0.15%. Rounding is ignored, and exactly 0.15% stays plain.';
+    }
+    cell.textContent=d.toFixed(2)+'%';
+    cell.classList.toggle('flag',flag);
+    verdict.textContent=flag?'Flagged: red and bold':'Not flagged';
+    verdict.style.color=flag?'var(--flag)':'var(--ok)';
+  }
+  function setMode(m){mode=m;bKN.setAttribute('aria-pressed',m==='KN');bO.setAttribute('aria-pressed',m==='O');update();}
+  bKN.addEventListener('click',function(){setMode('KN')});
+  bO.addEventListener('click',function(){setMode('O')});
+  val.addEventListener('input',update);
+  document.querySelectorAll('.presets button').forEach(function(b){b.addEventListener('click',function(){val.value=b.dataset.v;update();});});
+  update();
+})();
+</script>
+
+</body>
+</html>
